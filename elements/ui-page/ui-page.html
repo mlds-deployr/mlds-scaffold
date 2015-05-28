@@ -1,0 +1,152 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<polymer-element name="ui-page">
+<!--
+  - To use rename file to `ui.html` and place it in `/mlds-demo/ui/ui.html`
+  -->
+<template>
+    <link rel="stylesheet" href="ui.css">
+    <deployr-server endpoint="http://166.78.105.110:7400" cors="true"></deployr-server>
+    <!--<deployr-server endpoint="http://10.145.1.237:7400" cors="true"></deployr-server>-->
+    
+   <deployr-rscript 
+      name="RUGclusters" 
+      author="sheri" 
+      directory="geo" 
+      inputs="nclust" 
+      outputs="RRevoRUGS_2014"
+      runOnload="true">
+   </deployr-rscript>
+
+    <deployr-rscript 
+      name="faithful" 
+      author="swells" 
+      directory="faithful" 
+      inputs="n_breaks,individual_obs,density,bw_adjust" 
+      outputs="plot"
+      ression="block"
+      runOnload="true">
+    </deployr-rscript> 
+
+    <core-scaffold>
+        <core-header-panel navigation flex mode="seamed">
+          <core-toolbar>DeployR</core-toolbar>
+          <div class="content" hidden?="{{ selected == 1 }}">
+             <h5 style="padding-left:15px;"> Select number of clusters:</h5>
+             <deployr-slider
+                rscript="RUGclusters" 
+                rinput="nclus" 
+                rtype="numeric" 
+                watch="true" 
+                width="215px"
+                min="2" 
+                max="7" 
+                value="5"
+                step="1"
+                pin="true"
+                snaps="false">
+             </deployr-slider>
+          </div>
+          <div class="content" hidden?="{{ selected == 0 }}">
+             <deployr-dropdown-menu 
+                rscript="faithful" 
+                rinput="n_breaks" 
+                rtype="numeric" 
+                watch="true"
+                label="Number of bins in histogram"
+                selected="10"
+                items='{ "labels": [10, 20, 35, 50], "values": [10, 20, 35, 50] }' >
+             </deployr-dropdown-menu>
+             <deployr-checkbox 
+                rscript="faithful" 
+                rinput="individual_obs" 
+                rtype="logical" 
+                watch="true" 
+                label="Individual observations">
+             </deployr-checkbox>                       
+             <deployr-checkbox         
+                rscript="faithful" 
+                rinput="density" 
+                rtype="logical" 
+                watch="true" 
+                label="Density estimate">
+             </deployr-checkbox>
+          </div>
+        </core-header-panel>
+        <div tool>{{ selected == 1 ? 'Eruption Times for Old Faithful' : 'Cities clustered by population estimates'}}</div>
+        <paper-tabs selected="{{selected}}" selectedindex="0" horizontal center layout>
+           <paper-tab inline flex center-center horizontal layout active>RUGclusters.R</paper-tab>
+           <paper-tab inline flex center-center horizontal layout>faithful.R</paper-tab>
+        </paper-tabs>
+        <core-animated-pages selected="{{selected}}" selectedindex="0" notap>
+              <div class="content">
+                 <leaflet-map longitude="-96.6" latitude="39.5" zoom="3">
+                    <deployr-leaflet-tilelayer 
+                       rscript="RUGclusters"
+                       routput="RRevoRUGS_2014"
+                       pointToLayer="{{pointToLayerHandler}}"
+                       onEachFeature="{{onEachFeatureHandler}}">            
+                    </deployr-leaflet-tilelayer>       
+                 </leaflet-map>                               
+              </div>
+              <div class="content">
+                <deployr-plot 
+                    rscript="faithful" 
+                    routput="plot"
+                    width="400"
+                    height="400">
+                 </deployr-plot>           
+                 <br>           
+                 <deployr-slider
+                    hidden?="{{ !rscript.faithful.inputs.density }}"      
+                    rscript="faithful" 
+                    rinput="bw_adjust" 
+                    rtype="numeric" 
+                    watch="true" 
+                    width="400px"
+                    min="0" 
+                    max="2" 
+                    value="1"
+                    step="0.2"
+                    pin="true"
+                    snaps="false">
+                 </deployr-slider>                           
+              </div>          
+        </core-animated-pages>
+    </core-scaffold>
+</template><script>/*
+ * To use copy `ui.js` it to `/mlds-demo/ui/ui.js`
+ */
+var ui = {
+    /* Bind functions and values */
+    ready: function() {
+
+    },
+
+    onEachFeatureHandler: function(feature, layer) {
+        layer.bindPopup(feature.properties['Name.x'] + '<br>' + feature.properties.City + '<br> Cluster: ' + feature.properties.cluster);
+    },
+
+    pointToLayerHandler: function(feature, latlng) {
+        var CLUSTER_COLORS = {
+            1: '#F8766D',
+            2: '#C49A00',
+            3: '#53B400',
+            4: '#02C094',
+            5: '#00B6EB',
+            6: '#A58AFF',
+            7: '#FB61D7',
+        };
+
+        return L.circleMarker(latlng, {
+            radius: 8,
+            fillColor: CLUSTER_COLORS[feature.properties.cluster],
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.7
+        });
+    }
+};
+Polymer("ui-page", ui);
+</script>
+</polymer-element>
